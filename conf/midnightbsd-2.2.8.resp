@@ -110,6 +110,17 @@ autoboot_delay="0"
 vfs.root.mountfrom="ufs:/dev/vtbd0p2"
 LDR
 
-# Required: poweroff ends the install; otherwise bsdinstall reboots into the
-# installer and the script runs again in a loop.
-poweroff
+# Required: terminate the install so bsdinstall doesn't reboot into the
+# installer and loop. Use `halt -p -q` instead of plain `poweroff` because
+# on 2.2.8 a graceful poweroff (via init) races with bsdinstall's own
+# post-script phases (entropy, umount) and can leave the VM stuck with
+# libvirt still reporting `running`, hanging CI for 6h.
+#
+# `halt -p -q` bypasses init, SIGKILLs every userland process (including
+# bsdinstall), and goes straight to the reboot(2) syscall with
+# RB_POWEROFF. The kernel's bufshutdown() still flushes dirty buffers
+# during the syscall; the explicit `sync` before is belt-and-suspenders.
+sync
+halt -p -q
+
+
