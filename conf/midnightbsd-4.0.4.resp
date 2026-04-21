@@ -1,0 +1,57 @@
+# bsdinstall installerconfig for MidnightBSD, fetched via HTTP and fed into
+# `bsdinstall script` from the live Shell. Top section: installer variables.
+# Bottom section (after the #!/bin/sh line): post-install script run chroot
+# inside the new system.
+
+PARTITIONS=DEFAULT
+DISTRIBUTIONS="kernel.txz base.txz"
+
+#!/bin/sh
+
+# Hostname
+sysrc hostname="midnightbsd"
+
+# DHCP on whichever NIC is present (vtnet0 under virtio, em0 under e1000)
+sysrc ifconfig_vtnet0="DHCP"
+sysrc ifconfig_em0="DHCP"
+
+# SSH
+sysrc sshd_enable="YES"
+
+# Disable sendmail — on a box with no MX / unqualified hostname it blocks rc
+# for ~60s per retry on boot with "My unqualified host name unknown; sleeping
+# for retry". We don't need outbound mail from the image.
+sysrc sendmail_enable="NONE"
+sysrc sendmail_submit_enable="NO"
+sysrc sendmail_outbound_enable="NO"
+sysrc sendmail_msp_queue_enable="NO"
+
+# Root password so build.sh can sshpass in and install the public key.
+# Also flip root's default shell from csh to sh — build.sh's enable-ssh
+# step pipes a bash-style `TERM=xterm <commands` stream over ssh, which
+# csh rejects with "Command not found".
+echo 'midnightbsd' | pw usermod root -h 0 -s /bin/sh
+
+# Allow root password login temporarily for builder bootstrap
+cat >> /etc/ssh/sshd_config <<EOF
+
+PermitRootLogin yes
+PasswordAuthentication yes
+AcceptEnv *
+EOF
+
+# Time zone
+cp /usr/share/zoneinfo/UTC /etc/localtime
+
+# Skip the MidnightBSD FirstBoot wizard on next boot. Without this, rc blocks
+# (before sshd starts) on prompts for mirror/bsdstats/hw-probe/Ravenports/
+# graphical, and build.sh can't SSH in.
+touch /etc/fbreceipt
+
+# Zero the loader menu delay so post-install reboots don't wait at the menu.
+# postBuild.sh rewrites /boot/loader.conf later with its own optimizations.
+echo 'autoboot_delay="0"' >> /boot/loader.conf
+
+# Required: poweroff ends the install; otherwise bsdinstall reboots into the
+# installer and the script runs again in a loop.
+poweroff

@@ -1,0 +1,31 @@
+
+# Strip any shipped PermitRootLogin/PubkeyAuth/PasswordAuth lines before
+# appending ours — sshd honors the first occurrence in the file, so
+# 2.2.8's default `PermitRootLogin no` would otherwise override a later
+# `yes` and leave us locked out.
+sed -i '' -E '/^[[:space:]]*#?[[:space:]]*(PermitRootLogin|PubkeyAuthentication|PasswordAuthentication|AcceptEnv)[[:space:]]/d' /etc/ssh/sshd_config
+
+echo '' >> /etc/ssh/sshd_config
+
+echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config
+
+echo 'PubkeyAuthentication yes' >> /etc/ssh/sshd_config
+
+echo 'PasswordAuthentication yes' >> /etc/ssh/sshd_config
+
+echo 'AcceptEnv *' >> /etc/ssh/sshd_config
+
+
+mkdir -p ~/.ssh
+
+chmod 700 ~/.ssh
+
+rm -f ~/.ssh/id_rsa
+
+ssh-keygen -t rsa -f ~/.ssh/id_rsa -q -N ''
+
+
+service sshd restart
+
+
+echo "enable ssh finished."

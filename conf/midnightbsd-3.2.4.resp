@@ -1,0 +1,115 @@
+# bsdinstall installerconfig for MidnightBSD 3.2.4.
+#
+# The shipped `scriptedpart` binary on 3.2.4 rejects every PARTITIONS
+# syntax we've tried (DEFAULT, bare disk, explicit mnbsd-* or freebsd-*
+# layouts all error with "Invalid argument"). ZFSBOOT_DISKS also fails —
+# zfsboot pops its interactive TUI with "stripe: 0 disks" regardless of
+# the env var.
+#
+# Work around both by partitioning and mounting manually here in the
+# preamble (sourced by /usr/libexec/bsdinstall/script before it calls
+# scriptedpart/zfsboot), and overriding the `bsdinstall` dispatcher with
+# a shell function that no-ops `scriptedpart` and `mount`. Everything
+# downstream (checksum, distextract, bootconfig, config, post-install
+# chroot) runs against the filesystem we've already prepared.
+
+# Wipe any pre-existing GPT and lay down our own layout: 512K PMBR boot,
+# 2G swap, rest for root UFS.
+gpart destroy -F vtbd0 >/dev/null 2>&1 || true
+gpart create -s gpt vtbd0
+# Partition order matters: gptboot expects the UFS root at the partition
+# immediately after freebsd-boot. Standard FreeBSD layout is boot → ufs →
+# swap; putting swap before ufs lands the kernel at a mountroot prompt.
+# Bounded root size so the trailing swap has room; 24 GiB covers a minimal
+# base+kernel install with plenty of headroom.
+gpart add -t mnbsd-boot -s 512K -l boot vtbd0
+gpart add -t mnbsd-ufs -s 24G -l rootfs vtbd0
+gpart add -t mnbsd-swap -s 2G -l swap vtbd0
+gpart bootcode -b /boot/pmbr -p /boot/gptboot -i 1 vtbd0
+newfs -U /dev/gpt/rootfs
+
+# Mount root where bsdinstall expects its chroot.
+: "${BSDINSTALL_CHROOT:=/mnt}"
+export BSDINSTALL_CHROOT
+mkdir -p "$BSDINSTALL_CHROOT"
+mount /dev/gpt/rootfs "$BSDINSTALL_CHROOT"
+
+# Write the fstab bsdinstall will copy into the new system.
+: "${BSDINSTALL_TMPETC:=/tmp/bsdinstall_etc}"
+export BSDINSTALL_TMPETC
+mkdir -p "$BSDINSTALL_TMPETC"
+cat > "$BSDINSTALL_TMPETC/fstab" <<FSTAB
+/dev/vtbd0p2 / ufs rw 1 1
+/dev/vtbd0p3 none swap sw 0 0
+FSTAB
+
+# Shadow the bsdinstall dispatcher so the script's scriptedpart/mount/
+# bootconfig calls become no-ops — we've already partitioned + mounted +
+# laid down `gpart bootcode` on p1, and letting the stock bootconfig run
+# rewrites the PMBR/gptboot pair targeting a freebsd-ufs GUID that our
+# mnbsd-ufs partition doesn't have, which lands first-boot at mountroot.
+bsdinstall() {
+    case "$1" in
+        scriptedpart|mount|bootconfig) return 0 ;;
+        *) command bsdinstall "$@" ;;
+    esac
+}
+
+DISTRIBUTIONS="kernel.txz base.txz"
+
+#!/bin/sh
+
+# Hostname
+sysrc hostname="midnightbsd"
+
+# DHCP on whichever NIC is present (vtnet0 under virtio, em0 under e1000)
+sysrc ifconfig_vtnet0="DHCP"
+sysrc ifconfig_em0="DHCP"
+
+# SSH
+sysrc sshd_enable="YES"
+
+# Disable sendmail — on a box with no MX / unqualified hostname it blocks rc
+# for ~60s per retry on boot with "My unqualified host name unknown; sleeping
+# for retry". We don't need outbound mail from the image.
+sysrc sendmail_enable="NONE"
+sysrc sendmail_submit_enable="NO"
+sysrc sendmail_outbound_enable="NO"
+sysrc sendmail_msp_queue_enable="NO"
+
+# Root password so build.sh can sshpass in and install the public key.
+# Also flip root's default shell from csh to sh — build.sh's enable-ssh
+# step pipes a bash-style `TERM=xterm <commands` stream over ssh, which
+# csh rejects with "Command not found".
+echo 'midnightbsd' | pw usermod root -h 0 -s /bin/sh
+
+# Allow root password login temporarily for builder bootstrap
+cat >> /etc/ssh/sshd_config <<EOF
+
+PermitRootLogin yes
+PasswordAuthentication yes
+AcceptEnv *
+EOF
+
+# Time zone
+cp /usr/share/zoneinfo/UTC /etc/localtime
+
+# Skip the MidnightBSD FirstBoot wizard on next boot. Without this, rc blocks
+# (before sshd starts) on prompts for mirror/bsdstats/hw-probe/Ravenports/
+# graphical, and build.sh can't SSH in.
+touch /etc/fbreceipt
+
+# Zero the loader menu delay so post-install reboots don't wait at the menu,
+# and tell the kernel exactly which partition to mount as root. The latter
+# is required because we partitioned manually with `mnbsd-ufs` rather than
+# the `freebsd-ufs` type that gptboot auto-discovers; without this the
+# kernel lands at a `mountroot>` prompt on first boot.
+# postBuild.sh rewrites /boot/loader.conf later with its own optimizations.
+cat >> /boot/loader.conf <<LDR
+autoboot_delay="0"
+vfs.root.mountfrom="ufs:/dev/vtbd0p2"
+LDR
+
+# Required: poweroff ends the install; otherwise bsdinstall reboots into the
+# installer and the script runs again in a loop.
+poweroff
