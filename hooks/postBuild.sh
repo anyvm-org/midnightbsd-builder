@@ -47,7 +47,7 @@ sysrc savecore_enable="NO"
 sysrc utx_enable="NO"
 sysrc bgfsck_enable="NO"
 sysrc dmesg_enable="NO"
-
+sysrc firewall_enable="NO"
 
 sysrc ipv6_network_interfaces="none"
 
