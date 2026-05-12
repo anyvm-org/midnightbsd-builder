@@ -1,6 +1,7 @@
 
 
 [![Build](https://github.com/anyvm-org/midnightbsd-builder/actions/workflows/build.yml/badge.svg)](https://github.com/anyvm-org/midnightbsd-builder/actions/workflows/build.yml)
+[![Release](https://img.shields.io/github/v/release/anyvm-org/midnightbsd-builder?include_prereleases&sort=semver)](https://github.com/anyvm-org/midnightbsd-builder/releases)
 
 Latest: v2.0.2
 
