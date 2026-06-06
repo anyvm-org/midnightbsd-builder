@@ -24,16 +24,16 @@ inputKeys("tab; sleep 1; enter")
 time.sleep(10)
 
 # Bring up the network (virtio NIC == vtnet0).
-string(osname, "dhclient vtnet0")
+string("dhclient vtnet0")
 enter(osname)
 time.sleep(15)
 
 # Pull the installerconfig from the host-side web server.
-string(osname, "fetch -o /tmp/ic http://192.168.122.1:8000/%s" % env("VM_OPTS"))
+string("fetch -o /tmp/ic http://192.168.122.1:8000/%s" % env("VM_OPTS"))
 enter(osname)
 time.sleep(10)
 
 # Kick off the unattended install; the resp ends with `poweroff` and the
 # build pipeline's main loop polls isRunning.
-string(osname, "bsdinstall script /tmp/ic")
+string("bsdinstall script /tmp/ic")
 enter(osname)
