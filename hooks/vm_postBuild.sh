@@ -13,7 +13,7 @@ kldload fusefs 2>/dev/null || true
 
 echo "Applying fastest boot optimizations..."
 
-# Optimize loader.conf. APPEND — the resp's post-install may have already
+# Optimize loader.conf. APPEND -- the resp's post-install may have already
 # written `vfs.root.mountfrom` (for builds like 3.2.4 / 2.2.8 where we
 # partition manually with mnbsd-* types that gptboot can't auto-discover).
 # A `>` redirect here would wipe that and land the next reboot at a
