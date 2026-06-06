@@ -898,6 +898,41 @@ def vnc_capture(pngpath):
         time.sleep(3)
 
 
+# Public VNC helpers usable from hooks. These are thin wrappers over the
+# vncdotool CLI so hook code never needs to subprocess directly. They are
+# VNC-mode-only -- in console-build mode the keyboard helpers (string/enter/
+# tab/...) talk to the serial socket and a serial console has no mouse, no
+# super-alt-t, etc. Calling these in console mode will still try to drive
+# vncdotool but typically have no effect on the guest.
+
+def vncKey(key):
+    """Send a key event over VNC. `key` is a vncdotool name like 'enter',
+    'right', 'tab', 'super-alt-t', 'ctrl-c'."""
+    return subprocess.run(["vncdotool", "key", str(key)]).returncode
+
+
+def vncMove(x, y):
+    """Move the VNC pointer to absolute (x, y)."""
+    return subprocess.run(["vncdotool", "move", str(x), str(y)]).returncode
+
+
+def vncClick(button=1):
+    """Click a VNC mouse button (1=left, 2=middle, 3=right)."""
+    return subprocess.run(["vncdotool", "click", str(button)]).returncode
+
+
+def vncMoveClick(x, y, button=1):
+    """Move the pointer to (x, y) and click `button`, in one vncdotool call
+    (single TCP round trip to the VNC server)."""
+    return subprocess.run(["vncdotool", "move", str(x), str(y),
+                           "click", str(button)]).returncode
+
+
+def vncType(text):
+    """Type a literal string over VNC (with --force-caps for layout safety)."""
+    return subprocess.run(["vncdotool", "--force-caps", "type", text]).returncode
+
+
 def _write_index_html(osname, text):
     head = ("<!DOCTYPE html>\n<html>\n<head>\n<title>%s %s</title>\n"
             "<meta http-equiv='refresh' content='1'>\n</head>\n"
@@ -1092,16 +1127,22 @@ def _key(osname, console_seq, vnc_key):
         run(["vncdotool", "key", vnc_key])
 
 
-def string(osname_or_text=None, *rest):
-    """string(text) when VM_OS_NAME is set in env; string(osname, text) otherwise.
-    Mirrors the bash function's osname resolution."""
+def string(*args):
+    """Inject a literal string into the guest console. VM_OS_NAME must be
+    set; the build pipeline sets it from the conf, and exec()'d hooks
+    inherit it via this module's globals. The parts are joined with a
+    single space.
+
+      string("dhclient vtnet0")  -> guest types `dhclient vtnet0`
+      string("a", "b")           -> guest types `a b`
+
+    Do NOT pass osname as a leading arg. The old API accepted it and that
+    accidentally produced `# midnightbsd dhclient vtnet0` (root cause of the
+    initial MidnightBSD runs hanging at /bin/sh: midnightbsd: not found)."""
     osname = env("VM_OS_NAME")
-    args = [osname_or_text] + list(rest) if osname_or_text is not None else list(rest)
     if not osname:
-        if not args:
-            log("Usage: string netbsd"); return 1
-        osname = args.pop(0)
-    text = " ".join(args) if args else ""
+        log("string: VM_OS_NAME not set"); return 1
+    text = " ".join(args)
     if env("VM_USE_CONSOLE_BUILD"):
         _send_console(osname, text)
     else:
@@ -1192,7 +1233,17 @@ def _dispatch_keygroup(group):
     elif cmd in KEYFUNCS:
         KEYFUNCS[cmd](*rest)
     else:
-        log("input: unknown key command: %s" % cmd)
+        # Fall through to a PATH command. Mirrors the old bash `inputKeys` /
+        # `input osname "..."` semantics, which did `eval "$*"` and would run
+        # any shell command (e.g. `vncdotool key super-alt-t` directly inside
+        # an opts.txt step). We run it as argv (no shell interpretation), so
+        # quoting / metachars don't sneak in.
+        try:
+            subprocess.run([cmd] + list(rest))
+        except FileNotFoundError:
+            log("input: unknown key command and not on PATH: %s" % cmd)
+        except Exception as e:
+            log("input: %s: %s" % (cmd, e))
 
 
 def _run_keyseq(keystr):
@@ -1245,7 +1296,7 @@ def inputFile(osname=None, fpath=None):
     os.environ["VM_OS_NAME"] = osname
     if env("VM_USE_CONSOLE_BUILD"):
         _serve_file_nc(fpath, 64342)
-        string(osname, "nc  192.168.122.1 64342 | sh")
+        string("nc  192.168.122.1 64342 | sh")
         enter(osname)
     else:
         run(["vncdotool", "--force-caps", "--delay=150", "typefile", fpath])
@@ -1257,7 +1308,7 @@ def inputFileNC(osname=None, fpath=None):
         log("Usage: inputFile netbsd file.txt"); return 1
     os.environ["VM_OS_NAME"] = osname
     _serve_file_nc(fpath, 64342)
-    string(osname, "nc  192.168.122.1 64342 | sh")
+    string("nc  192.168.122.1 64342 | sh")
     enter(osname)
     return 0
 
@@ -1267,7 +1318,7 @@ def inputFileTelnet(osname=None, fpath=None):
         log("Usage: inputFile netbsd file.txt"); return 1
     os.environ["VM_OS_NAME"] = osname
     _serve_file_nc(fpath, 64342)
-    string(osname, "( sleep 1; ) | telnet 192.168.122.1 64342 | bash")
+    string("( sleep 1; ) | telnet 192.168.122.1 64342 | bash")
     enter(osname)
     return 0
 
@@ -1277,7 +1328,7 @@ def inputFileBash(osname=None, fpath=None):
         log("Usage: inputFile netbsd file.txt"); return 1
     os.environ["VM_OS_NAME"] = osname
     _serve_file_nc(fpath, 64342)
-    string(osname, "bash -c 'bash <(exec 3<>/dev/tcp/192.168.122.1/64342; cat <&3)'")
+    string("bash -c 'bash <(exec 3<>/dev/tcp/192.168.122.1/64342; cat <&3)'")
     enter(osname)
     return 0
 
@@ -1288,7 +1339,7 @@ def inputFileStdIn(osname=None, fpath=None):
     os.environ["VM_OS_NAME"] = osname
     with open(fpath, errors="replace") as f:
         for line in f:
-            string(osname, line.rstrip("\n"))
+            string(line.rstrip("\n"))
             enter(osname)
             time.sleep(1)
     return 0
@@ -1300,10 +1351,10 @@ def uploadFile(osname=None, local=None, remote=None):
     os.environ["VM_OS_NAME"] = osname
     if env("VM_USE_CONSOLE_BUILD"):
         _serve_file_nc(local, 64343)
-        string(osname, "nc  192.168.122.1 64343 >%s" % remote)
+        string("nc  192.168.122.1 64343 >%s" % remote)
         enter(osname)
     else:
-        string(osname, "cat - >%s" % remote)
+        string("cat - >%s" % remote)
         enter(osname)
         inputFile(osname, local)
         ctrlD(osname)
