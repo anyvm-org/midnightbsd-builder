@@ -14,7 +14,7 @@
 
 # ISO auto-boots -> Welcome dialog; Keymap Selection auto-clears on this ISO
 # without user input.
-waitForText(osname, "MidnightBSD Installer", "300")
+waitForText("MidnightBSD Installer", "300")
 time.sleep(5)
 
 # Welcome menu: Install / Shell / Live CD -- Tab moves Install->Shell, Enter selects.
@@ -25,15 +25,15 @@ time.sleep(10)
 
 # Bring up the network (virtio NIC == vtnet0).
 string("dhclient vtnet0")
-enter(osname)
+enter()
 time.sleep(15)
 
 # Pull the installerconfig from the host-side web server.
 string("fetch -o /tmp/ic http://192.168.122.1:8000/%s" % env("VM_OPTS"))
-enter(osname)
+enter()
 time.sleep(10)
 
 # Kick off the unattended install; the resp ends with `poweroff` and the
 # build pipeline's main loop polls isRunning.
 string("bsdinstall script /tmp/ic")
-enter(osname)
+enter()

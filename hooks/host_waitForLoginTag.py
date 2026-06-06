@@ -7,8 +7,8 @@
 # look for the literal "logi" so we catch the actual login: prompt and not
 # a banner that happens to embed the tag.
 
-waitForText(osname, env("VM_LOGIN_TAG"), "30")
+waitForText(env("VM_LOGIN_TAG"), "30")
 
 time.sleep(10)
 
-waitForText(osname, "logi")
+waitForText("logi")
