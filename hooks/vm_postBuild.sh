@@ -24,6 +24,13 @@ loader_logo="NO"
 loader_menu_title="NO"
 
 hw.hpet.enable=0
+
+# Do not attach the Hyper-V VMBus driver. Under QEMU+WHPX (Windows hosts)
+# the guest sees Hyper-V CPUID ("Microsoft Hv"), attaches vmbus0, and stalls
+# ~110s in the root-mount hold negotiating with a VMBus provider QEMU never
+# supplies (boot 130s -> 18s with this hint). anyvm always runs this image
+# under QEMU with virtio devices, never under real Hyper-V, so no loss.
+hint.vmbus.0.disabled="1"
 EOF
 
 # Enable parallel RC
