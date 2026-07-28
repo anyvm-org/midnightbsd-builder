@@ -14,7 +14,21 @@
 
 # ISO auto-boots -> Welcome dialog; Keymap Selection auto-clears on this ISO
 # without user input.
-waitForText("MidnightBSD Installer", "300")
+#
+# A timeout here is FATAL. Every keystroke below assumes the installer TUI is
+# on screen; if it never appeared the guest is dead and we would type dhclient
+# / fetch / bsdinstall into a panic message, "install" nothing, and only fail
+# much later with a confusing "not a bootable disk". That is exactly what
+# happened on 2026-07-27 (run 30265903005, 3.2.4): the ISO panicked with
+# "panic: vm_fault: fault on nofault entry", this wait timed out, the hook
+# carried on regardless, and the job then hung 5 h 40 m in the login wait.
+# Safe to be strict: the three green jobs in that same run never timed out
+# here -- only on the best-effort login-tag anchor.
+if waitForText("MidnightBSD Installer", "300") != 0:
+    log("FATAL: the MidnightBSD installer never appeared on the console.")
+    log("       The install ISO most likely panicked -- check the screen dump "
+        "above for 'panic:'. Aborting instead of typing into a dead screen.")
+    sys.exit(1)
 time.sleep(5)
 
 # Welcome menu: Install / Shell / Live CD -- Tab moves Install->Shell, Enter selects.
