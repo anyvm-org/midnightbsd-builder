@@ -5,7 +5,7 @@
       "tag": "2.2.8",
       "release": "2.2.8",
       "arch": "x86_64",
-      "sync": "rsync,scp,sshfs,nfs",
+      "sync": "rsync,scp,sshfs,nfs,tar",
       "shutdown": "/sbin/shutdown -p now",
       "desktop": false,
       "build": true
@@ -14,7 +14,7 @@
       "tag": "3.2.4",
       "release": "3.2.4",
       "arch": "x86_64",
-      "sync": "rsync,scp,sshfs,nfs",
+      "sync": "rsync,scp,sshfs,nfs,tar",
       "shutdown": "/sbin/shutdown -p now",
       "desktop": false,
       "build": true
@@ -23,7 +23,7 @@
       "tag": "4.0.4",
       "release": "4.0.4",
       "arch": "x86_64",
-      "sync": "rsync,scp,sshfs,nfs",
+      "sync": "rsync,scp,sshfs,nfs,tar",
       "shutdown": "/sbin/shutdown -p now",
       "desktop": false,
       "build": true
@@ -32,7 +32,7 @@
       "tag": "4.0.6",
       "release": "4.0.6",
       "arch": "x86_64",
-      "sync": "rsync,scp,sshfs,nfs",
+      "sync": "rsync,scp,sshfs,nfs,tar",
       "shutdown": "/sbin/shutdown -p now",
       "desktop": false,
       "build": true
@@ -41,7 +41,7 @@
       "tag": "4.0.7",
       "release": "4.0.7",
       "arch": "x86_64",
-      "sync": "rsync,scp,sshfs,nfs",
+      "sync": "rsync,scp,sshfs,nfs,tar",
       "shutdown": "/sbin/shutdown -p now",
       "desktop": false,
       "build": true
