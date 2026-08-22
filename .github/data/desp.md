@@ -1,13 +1,3 @@
-
-
-| Release | x86_64 |
-|---------|---------|
-| 4.0.7 | ✅ (rsync,scp,sshfs,nfs,tar) |
-| 4.0.6 | ✅ (rsync,scp,sshfs,nfs,tar) |
-| 4.0.4 | ✅ (rsync,scp,sshfs,nfs,tar) |
-| 3.2.4 | ✅ (rsync,scp,sshfs,nfs,tar) |
-| 2.2.8 | ✅ (rsync,scp,sshfs,nfs,tar) |
-
 How the images are built:
 
 Each image is built automatically in the
