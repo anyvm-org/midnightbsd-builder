@@ -45,6 +45,15 @@
       "shutdown": "/sbin/shutdown -p now",
       "desktop": false,
       "build": true
+    },
+    {
+      "tag": "4.0.8",
+      "release": "4.0.8",
+      "arch": "x86_64",
+      "sync": "rsync,scp,sshfs,nfs,tar",
+      "shutdown": "/sbin/shutdown -p now",
+      "desktop": false,
+      "build": true
     }
   ]
 }

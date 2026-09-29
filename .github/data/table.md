@@ -2,6 +2,7 @@
 
 | Release | x86_64 |
 |---------|---------|
+| 4.0.8 | ✅ (rsync,scp,sshfs,nfs,tar) |
 | 4.0.7 | ✅ (rsync,scp,sshfs,nfs,tar) |
 | 4.0.6 | ✅ (rsync,scp,sshfs,nfs,tar) |
 | 4.0.4 | ✅ (rsync,scp,sshfs,nfs,tar) |
