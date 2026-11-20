@@ -14,6 +14,7 @@ All the supported releases are here:
 
 | Release | x86_64 |
 |---------|---------|
+| 4.0.9 | ✅ (rsync,scp,sshfs,nfs,tar) |
 | 4.0.8 | ✅ (rsync,scp,sshfs,nfs,tar) |
 | 4.0.7 | ✅ (rsync,scp,sshfs,nfs,tar) |
 | 4.0.6 | ✅ (rsync,scp,sshfs,nfs,tar) |
@@ -49,6 +50,6 @@ How to build:
 
     Just clone the repo. and run:
     ```bash
-    python3 build.py conf/midnightbsd-4.0.8.conf
+    python3 build.py conf/midnightbsd-4.0.9.conf
     ```
    
